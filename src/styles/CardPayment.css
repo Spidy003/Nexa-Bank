@@ -1,0 +1,326 @@
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@500&display=swap");
+
+.c3d-visa-logo,
+.c3d-master-card-logo,
+.c3d-rupay-logo {
+  display: none;
+}
+
+.c3d-card {
+  position: relative;
+  z-index: 10;
+  perspective: 900px;
+  width: 400px;
+  margin: 0 auto;
+  margin-top: -60px;
+  /* pull it up slightly over the form */
+}
+
+.c3d-card .c3d-card-main-content {
+  position: relative;
+  width: 400px;
+  transition: transform 1s ease-in-out;
+  transform-style: preserve-3d;
+}
+
+.c3d-card .c3d-card-main-content>* {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  backface-visibility: hidden;
+}
+
+.c3d-card .c3d-card-main-content .c3d-card-front {
+  border-radius: 20px;
+  color: white;
+  height: 250px;
+  background: linear-gradient(45deg, #0045c7, #f31469);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 15px 35px rgba(0, -50, 150, 0.4);
+}
+
+.c3d-card-front .c3d-card-chip-img {
+  width: 60px;
+  position: absolute;
+  top: 15%;
+  left: 6%;
+}
+
+.c3d-card-front .c3d-card-design-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.25);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.c3d-card-front .c3d-visa-logo,
+.c3d-card-front .c3d-master-card-logo,
+.c3d-card-front .c3d-rupay-logo {
+  width: 70px;
+  position: absolute;
+  top: 10%;
+  right: 5%;
+  border-radius: 7px;
+}
+
+.c3d-card-front .c3d-card-num {
+  position: absolute;
+  text-align: center;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  font-family: "Ubuntu", monospace;
+  width: 100%;
+}
+
+.c3d-card-front .c3d-card-holder-name {
+  font-family: "Ubuntu", monospace;
+  text-transform: uppercase;
+  position: absolute;
+  bottom: 10%;
+  left: 6%;
+}
+
+.c3d-card-holder-name h4,
+.c3d-card-expires h4 {
+  margin-bottom: 2px;
+  font-size: 0.65em;
+  font-weight: lighter;
+  opacity: 0.8;
+}
+
+.c3d-card-holder-name h3,
+.c3d-card-expires h3 {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.c3d-card-front .c3d-card-expires {
+  font-family: "Ubuntu", monospace;
+  text-transform: uppercase;
+  position: absolute;
+  bottom: 10%;
+  right: 7%;
+}
+
+.c3d-card .c3d-card-main-content .c3d-card-back {
+  border-radius: 20px;
+  color: white;
+  height: 250px;
+  background: linear-gradient(45deg, #0045c7, #f31469);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: rotateY(180deg);
+  box-shadow: 0 15px 35px rgba(0, -50, 150, 0.4);
+}
+
+.c3d-card-back .c3d-card-design-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.25);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.c3d-card-back .c3d-barcode {
+  position: absolute;
+  top: 12%;
+  width: 100%;
+  height: 45px;
+  background: black;
+}
+
+.c3d-card-back .c3d-card-cvv-wrapper {
+  position: absolute;
+  z-index: 5;
+  top: 42%;
+  left: 10%;
+  width: 65%;
+  height: 40px;
+  background: #c9c9c9;
+  border-radius: 4px;
+}
+
+.c3d-card-back .c3d-card-cvv {
+  position: absolute;
+  top: 43%;
+  width: 80%;
+  height: 35px;
+  background: white;
+  color: black;
+  font-size: 20px;
+  font-family: "Ubuntu", monospace;
+  border-radius: 4px;
+}
+
+.c3d-card-back .c3d-card-cvv h5 {
+  text-align: right;
+  padding: 5px 10px 0px 0px;
+  font-weight: bold;
+}
+
+.c3d-card-back .c3d-card-back-text p {
+  position: absolute;
+  top: 65%;
+  left: 10%;
+  width: 80%;
+  font-family: "Ubuntu", monospace;
+  font-weight: lighter;
+  font-size: 0.75em;
+  opacity: 0.9;
+}
+
+.c3d-card-back .c3d-visa-logo,
+.c3d-card-back .c3d-master-card-logo,
+.c3d-card-back .c3d-rupay-logo {
+  width: 70px;
+  position: absolute;
+  bottom: 8%;
+  right: 5%;
+  border-radius: 7px;
+}
+
+.c3d-card.flip .c3d-card-main-content {
+  transform: rotateY(180deg);
+}
+
+.c3d-payment-form {
+  background: transparent;
+  backdrop-filter: none;
+  width: 100%;
+  border-radius: 24px;
+  z-index: 0;
+  padding: 40px 30px 30px 30px;
+  /* reduced padding top */
+  margin-top: 100px;
+  box-shadow: none;
+  border: none;
+}
+
+.c3d-payment-form form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: "Ubuntu", monospace;
+}
+
+.c3d-payment-form form>* {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  margin: 6px 0px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.c3d-payment-form form>*:focus-within {
+  border-color: #00E5FF;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.c3d-payment-form form input {
+  width: 100%;
+  background: transparent;
+  outline: none;
+  border: none;
+  height: 46px;
+  font-family: "Ubuntu", monospace;
+  font-size: 0.95em;
+  color: white;
+  padding-right: 15px;
+}
+
+.c3d-payment-form form input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.c3d-payment-form form input::-webkit-outer-spin-button,
+.c3d-payment-form form input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.c3d-payment-form form svg {
+  margin: 0px 14px;
+  fill: #00E5FF;
+  flex-shrink: 0;
+}
+
+.c3d-payment-form form .c3d-input-wrapper {
+  background: transparent;
+  display: flex;
+  justify-content: space-between;
+  border: none;
+  margin: 6px 0;
+  padding: 0;
+}
+
+.c3d-payment-form form .c3d-input-wrapper>* {
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  width: 48%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.c3d-payment-form form .c3d-input-wrapper>*:focus-within {
+  border-color: #00E5FF;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.c3d-payment-form form .c3d-input-wrapper .c3d-card-cvv-field svg {
+  margin-left: -5px;
+}
+
+.c3d-payment-btn {
+  margin-top: 16px !important;
+  width: 100% !important;
+  padding: 14px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0284C7, #00E5FF) !important;
+  border: none !important;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.c3d-payment-btn input {
+  font-size: 1.1rem !important;
+  color: white !important;
+  font-weight: bold;
+  cursor: pointer;
+  pointer-events: none;
+  text-align: center;
+  height: auto !important;
+  padding: 0 !important;
+}
+
+.c3d-payment-btn:hover {
+  box-shadow: 0px 8px 25px rgba(0, 229, 255, 0.4);
+  transform: translateY(-2px);
+}

@@ -1,0 +1,282 @@
+/* ================================================================
+   NexaBank — Ultra-Premium Banking Animation System
+   Style: Light mode, Glassmorphism, Enterprise
+================================================================ */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --ink: #0A0E1A;
+  --ink-muted: #4B5563;
+  --ink-soft: #9CA3AF;
+  --surface: rgba(255,255,255,0.72);
+  --surface-solid: #F8F9FF;
+  --glass: rgba(255,255,255,0.55);
+  --glass-border: rgba(120,130,180,0.18);
+  --accent: #4F6EF7;
+  --accent2: #7C3AED;
+  --accent-glow: rgba(79,110,247,0.22);
+  --success: #10B981;
+  --warn: #F59E0B;
+  --radius: 14px;
+  --font-main: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #f0f2fc;
+  font-family: var(--font-main);
+  color: var(--ink);
+}
+
+/* ───────────────────── CANVAS ───────────────────── */
+#bankCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0;
+}
+
+/* ───────────────────── UI OVERLAY ───────────────────── */
+#uiOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 28px 36px;
+  perspective: 1000px;
+}
+
+/* Brand */
+#brand {
+  position: absolute;
+  top: 28px; left: 36px;
+  display: flex; align-items: center; gap: 10px;
+  pointer-events: auto;
+}
+#brandIcon svg { width: 36px; height: 36px; }
+#brandName {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+}
+
+/* Corner mark */
+#cornerMark {
+  position: absolute;
+  bottom: 28px;
+  left: 36px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+
+/* ───────────────────── FLOATING CARDS ───────────────────── */
+.floating-card {
+  position: absolute;
+  width: 145px;
+  height: 88px;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  backdrop-filter: blur(16px) saturate(200%);
+  -webkit-backdrop-filter: blur(16px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  pointer-events: auto;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: 100;
+  transform-style: preserve-3d;
+  overflow: hidden;
+}
+
+.floating-card:hover {
+  transform: translateY(-12px) scale(1.1) rotateX(-20deg) rotateY(25deg) !important;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+#cardTopRight {
+  top: 40px;
+  right: 40px;
+  background: linear-gradient(135deg, rgba(60, 90, 255, 0.9), rgba(100, 40, 240, 0.9));
+  box-shadow: 0 10px 30px rgba(79, 110, 247, 0.4);
+  animation: floatTR 5s ease-in-out infinite;
+}
+
+#cardBottomLeft {
+  bottom: 15%;
+  left: 40px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(139, 92, 246, 0.8));
+  box-shadow: 0 10px 30px rgba(236, 72, 153, 0.4);
+  animation: floatBL 6s ease-in-out infinite;
+}
+
+/* Shimmer Effect */
+.card-shimmer {
+  position: absolute;
+  inset: -100%;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.15) 38%,
+    rgba(255, 255, 255, 0.3) 40%,
+    rgba(255, 255, 255, 0.15) 42%,
+    transparent 50%
+  );
+  animation: shimmer 4s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-50%) translateY(-50%); }
+  100% { transform: translateX(50%) translateY(50%); }
+}
+
+/* Realistic Chip */
+.card-chip {
+  width: 22px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #d4af37, #f1c40f, #b8860b);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 2px;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.3);
+}
+.card-chip.gold {
+  background: linear-gradient(135deg, #FFD700, #DAA520, #B8860B);
+}
+
+.chip-line {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.15);
+  width: 100%;
+}
+.chip-line::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Card Content */
+.card-logo {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  color: white;
+  opacity: 0.8;
+}
+
+.card-brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 11px;
+  color: white;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.card-number {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  margin-top: 6px;
+}
+
+.card-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: monospace;
+}
+
+.card-status {
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 4px;
+}
+
+.card-chip {
+  width: 28px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.card-chip::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.card-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.card-number {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.card-status {
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1.5px;
+}
+
+@keyframes floatTR {
+  0%   { transform: perspective(1000px) translateY(0) rotateX(-12deg) rotateY(22deg) scale(1); }
+  50%  { transform: perspective(1000px) translateY(-20px) rotateX(-18deg) rotateY(15deg) scale(1.05); }
+  100% { transform: perspective(1000px) translateY(0) rotateX(-12deg) rotateY(22deg) scale(1); }
+}
+
+@keyframes floatBL {
+  0%   { transform: perspective(1000px) translateY(0) rotateX(15deg) rotateY(-25deg) scale(1); }
+  50%  { transform: perspective(1000px) translateY(-18px) rotateX(22deg) rotateY(-18deg) scale(1.05); }
+  100% { transform: perspective(1000px) translateY(0) rotateX(15deg) rotateY(-25deg) scale(1); }
+}
+
+/* ───────────────────── ANIMATIONS ───────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
