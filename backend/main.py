@@ -10,11 +10,15 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── GEMINI INITIALIZATION ─────────────────────────────────────────────────────
-# Replace with your actual Gemini API key
-GEMINI_API_KEY = "AIzaSyClAmvTZPfDDtOlbsgmVmw3LN1nrJoomVc"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY not found in environment variables.")
+
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
