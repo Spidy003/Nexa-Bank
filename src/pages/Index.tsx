@@ -363,30 +363,32 @@ const Index = () => {
           <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%", maxWidth: 480, pointerEvents: 'auto' }}>
             
             {/* Main Transcript Box */}
-            <div style={{
-              background: "rgba(15,23,42,0.4)",
-              backdropFilter: "blur(12px)",
-              padding: "1rem 1.8rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(255,255,255,0.05)",
-              textAlign: "center",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-              width: "100%",
-              position: "relative"
-            }}>
-              <p style={{
-                color: "var(--ink)",
-                fontSize: "0.85rem",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                lineHeight: 1.5,
-                margin: 0,
-                opacity: status === "idle" ? 0.7 : 1,
-                transition: "all 0.3s ease",
+            {!showForm && (
+              <div style={{
+                background: "rgba(15,23,42,0.4)",
+                backdropFilter: "blur(12px)",
+                padding: "1rem 1.8rem",
+                borderRadius: "20px",
+                border: "1px solid rgba(255,255,255,0.05)",
+                textAlign: "center",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+                width: "100%",
+                position: "relative"
               }}>
-                {status === "listening" ? (interimText || transcript) : transcript}
-              </p>
-            </div>
+                <p style={{
+                  color: "var(--ink)",
+                  fontSize: "0.85rem",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 600,
+                  lineHeight: 1.5,
+                  margin: 0,
+                  opacity: status === "idle" ? 0.7 : 1,
+                  transition: "all 0.3s ease",
+                }}>
+                  {status === "listening" ? (interimText || transcript) : transcript}
+                </p>
+              </div>
+            )}
 
 
             <AuraOrb status={status} onClick={handleOrbClick} />

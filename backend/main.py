@@ -14,7 +14,7 @@ import google.generativeai as genai
 
 # ── GEMINI INITIALIZATION ─────────────────────────────────────────────────────
 # Replace with your actual Gemini API key
-GEMINI_API_KEY = "AIzaSyBL-nFkrE-pRZzsyRGOb7mMSXxtYgAOZM4"
+GEMINI_API_KEY = "AIzaSyClAmvTZPfDDtOlbsgmVmw3LN1nrJoomVc"
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
@@ -96,7 +96,20 @@ def gen_otp() -> str:
     return str(random.randint(1000, 9999))
 
 def gen_ref() -> str:
-    return "GRV" + str(int(time.time()))[-8:]
+    s = str(int(time.time()))
+    return "GRV" + s[-8:] if len(s) >= 8 else s
+
+SERVICE_OTPS = {
+    "ACCOUNT_OPENING": "4567",
+    "FUND_TRANSFER": "8822",
+    "BALANCE_CHECK": "1122",
+    "LOAN_INQUIRY": "3344",
+    "CARD_SERVICE": "5566",
+    "FIXED_DEPOSIT": "7788",
+    "CHEQUE_SERVICE": "9900",
+    "ACCOUNT_CLOSURE": "1010",
+    "GRIEVANCE": "2020",
+}
 
 ACCOUNT_STEPS = [
     "ACC_TYPE","ACC_SALUTATION","ACC_FIRST_NAME","ACC_MIDDLE_NAME","ACC_LAST_NAME",
@@ -176,16 +189,16 @@ def local_extract(text: str, state: str) -> dict:
         if "salary" in t: return {"sourceOfFunds": "Salary"}
         if "business" in t: return {"sourceOfFunds": "Business"}
         if "pension" in t: return {"sourceOfFunds": "Pension"}
-    if state.startswith("ACC_SERVICES"):
-        val = yes_no(t)
-        if val is not None:
-             target = {
-                 "ACC_SERVICES_ATM": "wantsATM",
-                 "ACC_SERVICES_CHEQUE": "wantsChequeBook",
-                 "ACC_SERVICES_MOBILE_BANKING": "wantsMobileBanking",
-                 "ACC_SERVICES_SMS": "wantsSMS"
-             }
-             return {target[state]: "Yes" if val else "No"}
+    
+    # Generic OTP/Mobile extraction
+    if "otp" in state.upper() or state == "ACC_OTP":
+        digits = re.sub(r"\D", "", t)
+        if len(digits) == 4: return {"otpValue": digits}
+    
+    if state == "ACC_MOBILE" or "MOBILE" in state.upper():
+        digits = re.sub(r"\D", "", t)
+        if len(digits) == 10: return {"mobile": digits}
+
     return {}
 
 # ── GEMINI AI CORE ──────────────────────────────────────────────────────────
@@ -369,8 +382,8 @@ def process_input(session_id: str, text: str) -> dict:
             return {"speak": "Cheque services — request cheque book or stop payment?", "field": "chequeAction", "intent": intent}
 
         if intent == "ACCOUNT_CLOSURE":
-            sess["state"] = "CLOSE_ACCOUNT"
-            return {"speak": "Please provide the account number to close.", "field": "closeAccount", "intent": intent}
+            sess["state"] = "CLOSE_ACCOUNT_NUM"
+            return {"speak": "Please provide the account number you wish to close.", "field": "closeAccount", "intent": intent}
 
         if intent == "GENERAL_QUERY":
             return {"speak": AuraAI.generate_response("Tell them you can help with Account Opening, Balance Check, Loans, Card Services, Fixed Deposits, Fund Transfer, Cheque Services, Account Closure, or Grievance. Ask what they need.")}
@@ -475,24 +488,23 @@ def process_input(session_id: str, text: str) -> dict:
                     resp = AuraAI.generate_response(instruction, context=data)
                     return {"speak": resp, "field": field, "form_data": data, "intent": intent, "section": get_section(step), "progress": get_progress(step), "documents": doc_status(data)}
         
-        # Generate OTP if we cleared the gauntlet
-        if not data.get("generatedOtp"):
-            otp = gen_otp()
-            data["generatedOtp"] = otp
+        # Inject OTP Step if we cleared the gauntlet
+        if not data.get("otpVerified"):
             sess["state"] = "ACC_OTP"
-            last4 = (data.get("mobile") or "")[-4:] or "XXXX"
-            return {"speak": AuraAI.generate_response(f"Tell them all info is collected. We sent an OTP to the mobile ending in {last4}. The OTP is {otp}. Ask them to say the OTP to verify."), "field": "otp", "form_data": data, "intent": intent, "section": "Verification", "progress": 90, "documents": doc_status(data)}
+            mob = str(data.get("mobile", ""))
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {mob} number.", "field": "otp", "form_data": data, "intent": intent, "section": "Verification", "progress": 90}
 
     # ── FALLBACK FOR LEGACY ACCOUNT OPENING STEPS ──
     if intent == "ACCOUNT_OPENING":
         if state == "ACC_OTP":
-            digits = re.sub(r"\D", "", t)
-            if digits == data.get("generatedOtp"):
+            otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+            if otp_val == SERVICE_OTPS.get(intent):
+                data["otpVerified"] = True
                 sess["state"] = "ACC_CONFIRM"
                 d = data
-                confirm_str = f"Summarize everything: Name {d.get('fullName')}, Acc {d.get('accountType')}, Nominee {d.get('nomineeName')}. Ask them to say yes to submit the final application."
-                return {"speak": AuraAI.generate_response(confirm_str), "field": "confirm", "validation_result": "valid", "form_data": data, "intent": intent, "section": "Confirmation", "progress": 95, "documents": doc_status(data)}
-            return {"speak": "OTP mismatch. Please try again.", "field": "otp", "error": True, "validation_result": "invalid"}
+                confirm_str = f"Verification successful. Let's review: Name {d.get('fullName')}, Acc {d.get('accountType')}. Say yes to confirm and open your account."
+                return {"speak": AuraAI.generate_response(confirm_str), "field": "confirm", "validation_result": "valid", "form_data": data, "intent": intent, "section": "Confirmation", "progress": 95}
+            return {"speak": "Security code mismatch. Please try again.", "field": "otp", "error": True, "validation_result": "invalid"}
 
         if state == "ACC_CONFIRM":
             if yes_no(t) is True:
@@ -508,7 +520,7 @@ def process_input(session_id: str, text: str) -> dict:
 
     # ── FUND TRANSFER (GEMINI INTEGRATION) ──
     if intent == "FUND_TRANSFER" and state != "FT_OTP":
-        expected_fields = ["ftType", "ftBeneficiaryName", "ftBeneficiaryAccount", "ftIfsc", "ftAmount"]
+        expected_fields = ["ftType", "ftBeneficiaryName", "ftBeneficiaryAccount", "ftIfsc", "ftAmount", "mobile"]
         extracted = AuraAI.extract_fields(text, "Fund Transfer", expected_fields, data)
         data.update(extracted)
 
@@ -517,7 +529,8 @@ def process_input(session_id: str, text: str) -> dict:
             "FT_BENEFICIARY_NAME": ("ftBeneficiaryName", "Ask for the beneficiary's full name."),
             "FT_BENEFICIARY_ACCOUNT": ("ftBeneficiaryAccount", "Ask for the beneficiary's exact account number."),
             "FT_IFSC": ("ftIfsc", "Ask for the exact IFSC code."),
-            "FT_AMOUNT": ("ftAmount", "Ask for the transfer amount in numbers.")
+            "FT_AMOUNT": ("ftAmount", "Ask for the transfer amount in numbers."),
+            "FT_MOBILE": ("mobile", "For security, please provide the 10-digit mobile number registered with your account.")
         }
         
         for step, (field, instruction) in step_map.items():
@@ -525,19 +538,18 @@ def process_input(session_id: str, text: str) -> dict:
                 sess["state"] = step
                 return {"speak": AuraAI.generate_response(instruction, context=data), "field": field, "form_data": data, "intent": intent}
 
-        if not data.get("generatedOtp"):
-            otp = gen_otp()
-            data["generatedOtp"] = otp
+        if not data.get("otpVerified"):
             sess["state"] = "FT_OTP"
-            return {"speak": AuraAI.generate_response(f"Acknowledge the full transfer of {data['ftAmount']} to {data['ftBeneficiaryName']} using {data['ftType']}. We need the OTP to confirm. The OTP is {otp}."), "field": "otp", "form_data": data, "intent": intent}
+            mob = str(data.get("mobile", ""))
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {mob} number.", "field": "otp", "form_data": data, "intent": intent}
 
     if intent == "FUND_TRANSFER" and state == "FT_OTP":
-        digits = re.sub(r"\D", "", t)
-        if digits == data.get("generatedOtp"):
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
             sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
             ref = "TXN" + str(int(time.time()))[-10:]
-            return {"speak": AuraAI.generate_response(f"Confirm transfer is successful. Reference is {ref}."), "final": True, "field": "success", "value": ref, "validation_result": "valid", "form_data": data}
-        return {"speak": "OTP mismatch. Try again.", "field": "otp", "validation_result": "invalid", "error": True}
+            return {"speak": AuraAI.generate_response(f"Verification successful. Funds transferred. Reference is {ref}."), "final": True, "field": "success", "value": ref, "validation_result": "valid", "form_data": data}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "validation_result": "invalid", "error": True}
 
 
     # ── LEGACY FALLBACK FOR MINOR FLOWS (Loan, Checking, Cards) ─────────────────────────
@@ -546,13 +558,13 @@ def process_input(session_id: str, text: str) -> dict:
         # LOCAL BYPASS for card actions
         if "block" in t:
             sess["state"] = "CARD_BLOCK_NUM"
-            return {"speak": "I can help block your card. First, please provide your 16-digit card number.", "field": "cardNumber", "section": "Card Block"}
+            return {"speak": "I can help block your card. First, please provide your 16-digit card number.", "field": "cardNumber", "section": "Card Block", "form_data": data}
         
         res = AuraAI.extract_fields(t, "Card Service", ["cardAction"], data)
         action = str(res.get("cardAction", t)).lower()
         if "block" in action:
             sess["state"] = "CARD_BLOCK_NUM"
-            return {"speak": "I can help block your card. First, please provide your 16-digit card number.", "field": "cardNumber", "section": "Card Block"}
+            return {"speak": "I can help block your card. First, please provide your 16-digit card number.", "field": "cardNumber", "section": "Card Block", "form_data": data}
         elif "new" in action or "apply" in action:
             return {"speak": "Applying for a new card is currently under maintenance. Try blocking for now!"}
         return {"speak": "Would you like to block your card or apply for a new one?"}
@@ -560,32 +572,32 @@ def process_input(session_id: str, text: str) -> dict:
     if state == "CARD_BLOCK_NUM":
         # Local bypass for 16 digits
         digits = "".join(filter(str.isdigit, t))
-        if len(digits) >= 12:
+        if len(digits) == 16:
             data["cardNumber"] = digits
             sess["state"] = "CARD_BLOCK_NAME"
-            return {"speak": "Got it. Now, please enter the Cardholder Name.", "field": "cardName", "section": "Card Block"}
+            return {"speak": "Got it. Now, please enter the Cardholder Name.", "field": "cardName", "section": "Card Block", "form_data": data}
         
         res = AuraAI.extract_fields(t, "Card Block Number", ["cardNumber"], data)
         num = str(res.get("cardNumber", "")).replace(" ", "")
-        if len(num) >= 12:
+        if len(num) == 16:
             data["cardNumber"] = num
             sess["state"] = "CARD_BLOCK_NAME"
-            return {"speak": "Got it. Now, please enter the Cardholder Name.", "field": "cardName", "section": "Card Block"}
-        return {"speak": "Please provide a valid 16-digit card number.", "field": "cardNumber"}
+            return {"speak": "Got it. Now, please enter the Cardholder Name.", "field": "cardName", "section": "Card Block", "form_data": data}
+        return {"speak": "Please enter a valid 16-digit card number. I cannot proceed without it.", "field": "cardNumber", "form_data": data, "error": True}
 
     if state == "CARD_BLOCK_NAME":
         # Local fallback - if it looks like a name and not a generic command
         if len(t.strip().split()) >= 1 and not any(k in t.lower() for k in ["help", "what", "how"]):
             data["cardName"] = t.strip().upper()
             sess["state"] = "CARD_BLOCK_EXP_CVV"
-            return {"speak": "Finally, please provide the Expiry Date (MM/YY) and CVV code.", "field": "cardExpiry", "section": "Card Block"}
+            return {"speak": "Finally, please provide the Expiry Date (MM/YY) and CVV code.", "field": "cardExpiry", "section": "Card Block", "form_data": data}
 
         res = AuraAI.extract_fields(t, "Card Block Name", ["cardName"], data)
         name = str(res.get("cardName", "")).strip()
         if name:
             data["cardName"] = name
             sess["state"] = "CARD_BLOCK_EXP_CVV"
-            return {"speak": "Finally, please provide the Expiry Date (MM/YY) and CVV code.", "field": "cardExpiry", "section": "Card Block"}
+            return {"speak": "Finally, please provide the Expiry Date (MM/YY) and CVV code.", "field": "cardExpiry", "section": "Card Block", "form_data": data}
         return {"speak": "Please provide the Cardholder Name.", "field": "cardName"}
 
     if state == "CARD_BLOCK_EXP_CVV":
@@ -595,39 +607,164 @@ def process_input(session_id: str, text: str) -> dict:
         if expiry_match and cvv_match:
             data["cardExpiry"] = expiry_match.group(1)
             data["cardCvv"] = cvv_match.group(1)
-            sess["state"] = "IDLE"
-            num = data.get("cardNumber", "xxxx")
-            return {"speak": f"Success! Your card ending in {num[-4:]} has been successfully and securely blocked. Your request is processed.", "final": True, "value": "Card Blocked", "field": "success"}
+            sess["state"] = "CARD_MOBILE"
+            return {"speak": "For your security, please provide the 10-digit mobile number registered with this card.", "field": "mobile", "intent": intent, "form_data": data}
 
         res = AuraAI.extract_fields(t, "Card Block Expiry CVV", ["cardExpiry", "cardCvv"], data)
         if res.get("cardExpiry") and res.get("cardCvv"):
             data.update(res)
-            sess["state"] = "IDLE"
-            num = data.get("cardNumber", "xxxx")
-            return {"speak": f"Success! Your card ending in {num[-4:]} has been successfully and securely blocked. Your request is processed.", "final": True, "value": "Card Blocked", "field": "success"}
+            sess["state"] = "CARD_MOBILE"
+            return {"speak": "For your security, please provide the 10-digit mobile number registered with this card.", "field": "mobile", "intent": intent, "form_data": data}
         return {"speak": "Please provide both the Card Expiry and CVV.", "field": "cardExpiry"}
+
+    if state == "CARD_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "CARD_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "CARD_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sess["state"] = "IDLE"
+            num_str = str(data.get("cardNumber", "xxxx"))
+            last4 = num_str[-4:] if len(num_str) >= 4 else "xxxx"
+            return {"speak": f"Verification successful. Your card ending in {last4} has been securely blocked.", "final": True, "value": "Card Blocked", "field": "success"}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
     if state == "FT_DEST_ACCOUNT":
         res = AuraAI.extract_fields(t, "Fund Transfer", ["ftBeneficiaryAccount", "cardName"], data)
-        num = str(res.get("ftBeneficiaryAccount", "")).replace(" ", "")
-        if num:
+        num_str = str(res.get("ftBeneficiaryAccount", "")).replace(" ", "")
+        if num_str:
             data.update(res)
+            data["ftBeneficiaryAccount"] = num_str
             sess["state"] = "FT_AMOUNT"
-            return {"speak": f"Beneficiary account {num[-4:] if len(num)>=4 else num} registered. How much would you like to transfer?", "field": "ftAmount", "intent": intent}
+            last4 = num_str[-4:] if len(num_str) >= 4 else num_str
+            return {"speak": f"Beneficiary account ending in {last4} registered. How much would you like to transfer?", "field": "ftAmount", "intent": intent, "form_data": data}
         return {"speak": "Please provide the beneficiary account or card number.", "field": "ftBeneficiaryAccount", "intent": intent}
 
     if state == "BAL_ACCOUNT":
         # Capture all details from the Card UI if possible
         res = AuraAI.extract_fields(t, "Balance Check", ["accountNumber", "cardName", "cardExpiry", "cardCvv"], data)
         num = str(res.get("accountNumber", "")).replace(" ", "")
+        digits = "".join(filter(str.isdigit, t))
         
-        # If an account number was extracted, provide a balance
-        if num:
-            balance = round(random.uniform(5000, 50000), 2)
-            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
-            return {"speak": f"The current balance for account ending in {num[-4:] if len(num)>=4 else 'xxxx'} is INR {balance:,}. How else can I help?", "final": True, "field": "success"}
+        target_num = num if len(num) >= 10 else (digits if len(digits) >= 10 else None)
+        
+        # If an account/card number was extracted, proceed to Mobile
+        if target_num:
+            data["accountNumber"] = target_num
+            sess["state"] = "BAL_MOBILE"
+            return {"speak": "For security, please provide the 10-digit mobile number registered with this account.", "field": "mobile", "intent": intent, "form_data": data}
         
         # If no account number was extracted, prompt again
-        return {"speak": AuraAI.generate_response("Account not found. Ask them to verify the number.")}
+        return {"speak": "Please enter a valid 16-digit card number or account number.", "field": "accountNumber", "error": True, "form_data": data}
+
+    if state == "BAL_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "BAL_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "BAL_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            num_obj = data.get("accountNumber", "xxxx")
+            num_str = str(num_obj)
+            last4 = num_str[-4:] if len(num_str) >= 4 else num_str
+            balance = round(random.uniform(5000, 50000))
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+            return {"speak": f"Verification successful. The current balance for account ending in {last4} is INR {balance:,}. How else can I help?", "final": True, "field": "success"}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
+
+    # ── LOAN, FD, CHQ, CLOSURE ─────────────────────────
+    if state == "LOAN_TYPE":
+        if any(k in t for k in ["home", "personal", "car", "education"]):
+            data["loanType"] = t.title()
+            sess["state"] = "LOAN_MOBILE"
+            return {"speak": "I can certainly help with that. Please provide your 10-digit registered mobile number for verification.", "field": "mobile", "intent": intent, "form_data": data}
+        return {"speak": "What type of loan: Home, Personal, Car, or Education?"}
+
+    if state == "LOAN_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "LOAN_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "LOAN_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+            return {"speak": f"Verification successful. Based on your profile, you are eligible for a {data.get('loanType')} loan of up to 50 Lakhs. A representative will contact you shortly.", "final": True}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
+
+    if state == "FD_AMOUNT":
+        digits = re.sub(r"\D", "", t)
+        if digits:
+            data["fdAmount"] = digits
+            sess["state"] = "FD_MOBILE"
+            return {"speak": f"Fixed Deposit of {digits} initiated. Please enter your mobile number to proceed.", "field": "mobile", "intent": intent, "form_data": data}
+        return {"speak": "Please enter the deposit amount."}
+
+    if state == "FD_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "FD_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "FD_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+            return {"speak": f"Verification successful. Your Fixed Deposit of {data.get('fdAmount')} has been created at 7.5% interest.", "final": True}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
+
+    if state == "CHQ_ACTION":
+        data["chequeAction"] = t
+        sess["state"] = "CHQ_MOBILE"
+        return {"speak": "To process your cheque request, please provide your 10-digit registered mobile number.", "field": "mobile", "intent": intent, "form_data": data}
+
+    if state == "CHQ_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "CHQ_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "CHQ_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+            return {"speak": "Verification successful. Your cheque service request has been processed.", "final": True}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
+
+    if state == "CLOSE_ACCOUNT_NUM":
+        data["closeAccountNum"] = t.replace(" ", "")
+        sess["state"] = "CLOSE_MOBILE"
+        return {"speak": f"Acknowledge closure of account {data['closeAccountNum']}. Please provide your registered mobile number.", "field": "mobile", "intent": intent, "form_data": data}
+
+    if state == "CLOSE_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "CLOSE_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "CLOSE_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+            return {"speak": "Verification successful. Your account closure request has been submitted for final review.", "final": True}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
         
     if state == "GRIEV_TYPE":
         if re.search(r"service", t): data["grievanceType"] = "Service Issue"
@@ -648,12 +785,28 @@ def process_input(session_id: str, text: str) -> dict:
         return {"speak": AuraAI.generate_response(f"Summarize complaint regarding {data['grievanceType']} on account {data['grievanceAccount']}. Ask them to say 'yes' to submit."), "field": "confirm", "value": data["grievanceAccount"], "form_data": data, "intent": intent}
 
     if state == "GRIEV_CONFIRM":
-        sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
         if yes_no(t) is True:
+            sess["state"] = "GRIEV_MOBILE"
+            return {"speak": "To submit your grievance formally, please provide your 10-digit registered mobile number.", "field": "mobile", "intent": intent, "form_data": data}
+        sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
+        return {"speak": AuraAI.generate_response("Complaint cancelled. Offer additional help."), "final": True}
+
+    if state == "GRIEV_MOBILE":
+        digits = str(re.sub(r"\D", "", t))
+        if len(digits) == 10:
+            data["mobile"] = digits
+            sess["state"] = "GRIEV_OTP"
+            return {"speak": f"Security Check: Please enter the OTP sent to respective {digits} number.", "field": "otp", "intent": intent, "form_data": data}
+        return {"speak": "Please enter your 10-digit registered mobile number.", "field": "mobile", "error": True, "form_data": data}
+
+    if state == "GRIEV_OTP":
+        otp_val = data.get("otpValue") or re.sub(r"\D", "", t)
+        if otp_val == SERVICE_OTPS.get(intent):
+            sessions[session_id] = {"state": "IDLE", "data": {}, "intent": None}
             ref = gen_ref()
             data["grievanceRef"] = ref
-            return {"speak": AuraAI.generate_response(f"Complaint registered. Reference is {ref}. Tell them it operates under RBI 30-day turnaround time."), "final": True, "field": "success", "value": ref, "form_data": data}
-        return {"speak": AuraAI.generate_response("Complaint cancelled. Offer additional help."), "final": True}
+            return {"speak": AuraAI.generate_response(f"Verification successful. Complaint registered. Reference is {ref}."), "final": True, "field": "success", "value": ref, "form_data": data}
+        return {"speak": "Security code mismatch. Try again.", "field": "otp", "error": True}
 
     # Catch-all
     return {"speak": AuraAI.generate_response("I didn't quite catch that. Could you please specify clearly what you meant?")}

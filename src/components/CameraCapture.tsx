@@ -12,44 +12,71 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ type, onCapture, onCancel
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [isCaptured, setIsCaptured] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isFlash, setIsFlash] = useState(false);
 
-  // Start Camera
-  const startCamera = async () => {
-    setError(null);
+  // Enumerate Devices
+  const getDevices = useCallback(async () => {
     try {
-      // First try with ideal settings
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      setDevices(videoDevices);
+      // Auto-set first device if none selected
+      if (videoDevices.length > 0 && !selectedDeviceId) {
+        setSelectedDeviceId(videoDevices[0].deviceId);
+      }
+    } catch (err) {
+      console.error("Error listing devices:", err);
+    }
+  }, [selectedDeviceId]);
+
+  // Start Camera
+  const startCamera = async (deviceId?: string) => {
+    setError(null);
+    // Stop existing stream
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+      const constraints: MediaStreamConstraints = {
         video: { 
-          facingMode: 'user',
+          deviceId: deviceId ? { exact: deviceId } : undefined,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
         audio: false
-      });
+      };
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
+      // Labels show up AFTER permission is granted
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      setDevices(allDevices.filter(d => d.kind === 'videoinput'));
     } catch (err: any) {
-      console.warn("Retrying with simple constraints...", err);
+      console.warn("Retrying with minimal constraints...", err);
       try {
-        // Fallback to absolute bare minimum
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+            video: deviceId ? { deviceId: { exact: deviceId } } : true 
+        });
         setStream(fallbackStream);
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
         }
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        setDevices(allDevices.filter(d => d.kind === 'videoinput'));
       } catch (finalErr: any) {
         if (finalErr.name === 'NotAllowedError') {
-          setError("Permission denied. Please click the camera icon in your browser address bar to allow access.");
-        } else if (finalErr.name === 'NotFoundError' || finalErr.name === 'DevicesNotFoundError') {
-          setError("No camera found. Please ensure your webcam is connected.");
+          setError("Permission denied. Please allow camera access in your browser settings.");
         } else {
-          setError("Could not access camera. Please check your system settings.");
+          setError("Still no camera found. Is Camo Studio active and its camera output turned ON?");
         }
         console.error(finalErr);
       }
@@ -57,7 +84,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ type, onCapture, onCancel
   };
 
   useEffect(() => {
-    startCamera();
+    getDevices().then(() => {
+        startCamera();
+    });
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -126,11 +155,34 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ type, onCapture, onCancel
       {/* Main Viewfinder */}
       <div className="relative aspect-video bg-black flex items-center justify-center">
         {error ? (
-          <div className="text-center p-8 bg-black/40 backdrop-blur-md rounded-2xl border border-red-500/30 m-4">
-             <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
-             <p className="text-white font-medium mb-6">{error}</p>
+          <div className="text-center p-8 bg-black/40 backdrop-blur-md rounded-2xl border border-red-500/30 m-4 flex flex-col items-center gap-4">
+             <X className="w-12 h-12 text-red-500 mx-auto" />
+             <p className="text-white font-medium">{error}</p>
+             
+             {/* Device Selector in Error State */}
+             {devices.length > 0 && (
+               <div className="w-full max-w-xs flex flex-col gap-2">
+                 <p className="text-[10px] text-white/40 uppercase tracking-widest text-left">Select Input Source:</p>
+                 <select 
+                    value={selectedDeviceId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedDeviceId(id);
+                      startCamera(id);
+                    }}
+                    className="w-full bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-100/90 appearance-none focus:outline-none focus:border-red-500/50 transition-colors"
+                  >
+                    {devices.map(device => (
+                      <option key={device.deviceId} value={device.deviceId} className="bg-slate-900 text-white">
+                        {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
+                      </option>
+                    ))}
+                  </select>
+               </div>
+             )}
+
              <button 
-               onClick={startCamera}
+               onClick={() => startCamera()}
                className="px-6 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-xl text-red-100 transition-all"
              >
                Retry Access
@@ -199,12 +251,51 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ type, onCapture, onCancel
       <div className="p-6 bg-slate-950/80 backdrop-blur-md border-t border-white/5 flex flex-col items-center gap-4">
         {!isCaptured ? (
           <>
+            {/* Device Selector / Refresh (Always visible to help discovery) */}
+            <div className="flex items-center gap-2 mb-2 w-full max-w-xs">
+              <div className="flex-1 relative">
+                <select 
+                  value={selectedDeviceId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedDeviceId(id);
+                    startCamera(id);
+                  }}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-cyan-100/80 appearance-none focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-30"
+                  disabled={devices.length === 0}
+                >
+                  {devices.length === 0 ? (
+                    <option>No cameras detected</option>
+                  ) : (
+                    devices.map(device => (
+                      <option key={device.deviceId} value={device.deviceId} className="bg-slate-900 border-none">
+                        {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                  <RefreshCw className="w-3 h-3 text-white/30" />
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                   getDevices();
+                   startCamera();
+                }}
+                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 transition-colors"
+                title="Refresh device list"
+              >
+                <RefreshCw className={`w-4 h-4 ${devices.length === 0 ? 'animate-spin-once' : ''}`} />
+              </button>
+            </div>
+
             <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">
               Say <span className="text-cyan-400 font-bold border-b border-cyan-400/30 px-1">"CLICK"</span> to capture photo
             </p>
             <button 
-              onClick={capturePhoto}
-              disabled={!!error}
+              onClick={() => capturePhoto()}
+              disabled={!!error && devices.length === 0}
               className="group relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-600 to-cyan-400 p-1 shadow-lg shadow-cyan-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
             >
               <div className="w-full h-full rounded-full border-2 border-white/40 flex items-center justify-center bg-transparent group-hover:bg-white/10 transition-colors">

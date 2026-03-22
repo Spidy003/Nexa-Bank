@@ -41,7 +41,7 @@ const ACCOUNT_SECTIONS: Array<{ name: string; icon: React.ReactNode; fields: Fie
   },
   {
     name: "Contact Details", color: "#00E5FF", gradient: "linear-gradient(135deg,#0284C7,#00E5FF)", icon: <FileText className="w-4 h-4" />,
-    fields: [{ key: "mobile", label: "MOBILE", mask: true }, { key: "email", label: "EMAIL_ID" }],
+    fields: [{ key: "mobile", label: "REGISTERED_MOBILE", mask: true }, { key: "email", label: "EMAIL_ID" }],
   },
   {
     name: "Address Details", color: "#00E5FF", gradient: "linear-gradient(135deg,#0284C7,#00E5FF)", icon: <MapPin className="w-4 h-4" />,
@@ -68,10 +68,10 @@ const ACCOUNT_SECTIONS: Array<{ name: string; icon: React.ReactNode; fields: Fie
 const SECTION_ORDER = ACCOUNT_SECTIONS.map(s => s.name);
 function getSectionIndex(name: string) { return SECTION_ORDER.indexOf(name); }
 
-const loanFields: FieldConfig[] = [{ key: "loanType", label: "LOAN_TYPE" }, { key: "loanAmount", label: "LOAN_AMOUNT" }, { key: "loanTenure", label: "TENURE" }, { key: "loanIncome", label: "MONTHLY_INCOME" }, { key: "loanEmployment", label: "EMPLOYMENT" }, { key: "loanPan", label: "PAN_NUMBER" }];
-const fdFields: FieldConfig[] = [{ key: "fdAmount", label: "FD_AMOUNT" }, { key: "fdTenure", label: "TENURE" }, { key: "fdInterestPayout", label: "INTEREST_PAYOUT" }, { key: "fdNominee", label: "NOMINEE" }];
-const ftFields: FieldConfig[] = [{ key: "ftType", label: "TRANSFER_TYPE" }, { key: "ftBeneficiaryName", label: "BENEFICIARY" }, { key: "ftBeneficiaryAccount", label: "ACCOUNT_NO" }, { key: "ftIfsc", label: "IFSC_CODE" }, { key: "ftAmount", label: "AMOUNT" }];
-const cardFields: FieldConfig[] = [{ key: "cardAction", label: "ACTION" }, { key: "cardType", label: "CARD_TYPE" }, { key: "cardNumber", label: "CARD_NUMBER", mask: true }];
+const loanFields: FieldConfig[] = [{ key: "loanType", label: "LOAN_TYPE" }, { key: "mobile", label: "REGISTERED_MOBILE", mask: true }, { key: "loanAmount", label: "LOAN_AMOUNT" }, { key: "loanTenure", label: "TENURE" }, { key: "loanIncome", label: "MONTHLY_INCOME" }, { key: "loanEmployment", label: "EMPLOYMENT" }, { key: "loanPan", label: "PAN_NUMBER" }];
+const fdFields: FieldConfig[] = [{ key: "fdAmount", label: "FD_AMOUNT" }, { key: "mobile", label: "REGISTERED_MOBILE", mask: true }, { key: "fdTenure", label: "TENURE" }, { key: "fdInterestPayout", label: "INTEREST_PAYOUT" }, { key: "fdNominee", label: "NOMINEE" }];
+const ftFields: FieldConfig[] = [{ key: "ftType", label: "TRANSFER_TYPE" }, { key: "ftBeneficiaryName", label: "BENEFICIARY" }, { key: "ftBeneficiaryAccount", label: "ACCOUNT_NO" }, { key: "mobile", label: "REGISTERED_MOBILE", mask: true }, { key: "ftIfsc", label: "IFSC_CODE" }, { key: "ftAmount", label: "AMOUNT" }];
+const cardFields: FieldConfig[] = [{ key: "cardAction", label: "ACTION" }, { key: "mobile", label: "REGISTERED_MOBILE", mask: true }, { key: "cardType", label: "CARD_TYPE" }, { key: "cardNumber", label: "CARD_NUMBER", mask: true }];
 
 const FormVisualization = ({
   formData, activeField, validationResult, isVisible,
@@ -178,27 +178,31 @@ const FormVisualization = ({
     );
   }
 
-  /* ── 3D INTERACTIVE CARD INTERCEPT (INPUT) ───────────────────────── */
-  const cardInputIntents = ["CARD_SERVICE", "BALANCE_CHECK", "FUND_TRANSFER"];
+  const cardInputIntents = ["CARD_SERVICE", "FUND_TRANSFER"];
   const cardInputFields = ["cardNumber", "cardName", "cardDetails", "accountNumber", "ftBeneficiaryAccount"];
 
-  if (cardInputIntents.includes(intent || "") && cardInputFields.includes(activeField || "")) {
-    return (
-      <div className="w-full max-w-lg animate-fade-in-up">
-        <InteractiveCard
-          activeField={activeField}
-          initialData={{
-            name: formData.cardName || formData.fullName,
-            number: formData.cardNumber,
-            expiry: formData.cardExpiry,
-            cvv: formData.cardCvv
-          }}
-          onSubmit={(data) => {
-            if (onUserSubmit) onUserSubmit(data);
-          }} />
-      </div>
-    );
-  }
+  const showCard = cardInputIntents.includes(intent || "") && cardInputFields.includes(activeField || "");
+
+  const fields =
+    intent === "LOAN_INQUIRY" ? loanFields :
+      intent === "CARD_SERVICE" ? cardFields :
+        intent === "FIXED_DEPOSIT" ? fdFields :
+          intent === "FUND_TRANSFER" ? ftFields :
+            intent === "BALANCE_CHECK" ? [{ key: "accountNumber" as keyof SessionData, label: "ACCOUNT/CARD_NO" }, { key: "mobile" as keyof SessionData, label: "REGISTERED_MOBILE", mask: true }] : 
+              [];
+
+  const intentGradients: Record<string, string> = {
+    LOAN_INQUIRY: "linear-gradient(135deg,#0369A1,#0284C7)",
+    CARD_SERVICE: "linear-gradient(135deg,#0284C7,#00E5FF)",
+    FIXED_DEPOSIT: "linear-gradient(135deg,#047857,#10B981)",
+    FUND_TRANSFER: "linear-gradient(135deg,#475569,#94A3B8)",
+    BALANCE_CHECK: "linear-gradient(135deg,#0284C7,#00E5FF)",
+  };
+  const intentColors: Record<string, string> = {
+    LOAN_INQUIRY: "#0284C7", CARD_SERVICE: "#00E5FF", FIXED_DEPOSIT: "#10B981", FUND_TRANSFER: "#94A3B8", BALANCE_CHECK: "#00E5FF"
+  };
+  const accentColor = intentColors[intent || ""] || "#00E5FF";
+  const accentGrad = intentGradients[intent || ""] || "linear-gradient(135deg,#0284C7,#00E5FF)";
 
   /* ── ACCOUNT SUCCESS CARD DISPLAY ────────────────────────────────── */
   if (activeField === "success" && intent === "ACCOUNT_OPENING") {
@@ -334,27 +338,45 @@ const FormVisualization = ({
     );
   }
 
-  /* ── NON-ACCOUNT SINGLE CARD ──────────────────────────────────── */
-  const fields =
-    intent === "LOAN_INQUIRY" ? loanFields :
-      intent === "CARD_SERVICE" ? cardFields :
-        intent === "FIXED_DEPOSIT" ? fdFields :
-          intent === "FUND_TRANSFER" ? ftFields : [];
-
-  const intentGradients: Record<string, string> = {
-    LOAN_INQUIRY: "linear-gradient(135deg,#0369A1,#0284C7)",
-    CARD_SERVICE: "linear-gradient(135deg,#0284C7,#00E5FF)",
-    FIXED_DEPOSIT: "linear-gradient(135deg,#047857,#10B981)",
-    FUND_TRANSFER: "linear-gradient(135deg,#475569,#94A3B8)",
-  };
-  const intentColors: Record<string, string> = {
-    LOAN_INQUIRY: "#0284C7", CARD_SERVICE: "#00E5FF", FIXED_DEPOSIT: "#10B981", FUND_TRANSFER: "#94A3B8",
-  };
-  const accentColor = intentColors[intent || ""] || "#00E5FF";
-  const accentGrad = intentGradients[intent || ""] || "linear-gradient(135deg,#0284C7,#00E5FF)";
-
   return (
-    <div className="w-full max-w-md animate-fade-in-up">
+    <div className="w-full max-w-md">
+      {/* Persistent Mobile Badge if exists */}
+      {formData.mobile && (
+        <div style={{
+          background: "rgba(0, 229, 255, 0.1)",
+          border: "1px solid rgba(0, 229, 255, 0.3)",
+          borderRadius: 20,
+          padding: "6px 16px",
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontFamily: "var(--font-mono)",
+          fontSize: "0.7rem",
+          fontWeight: 800,
+          color: "var(--accent)"
+        }}>
+          <Shield size={12} />
+          VERIFIED MOBILE: {formData.mobile.slice(0, 2)}xxxxxx{formData.mobile.slice(-2)}
+        </div>
+      )}
+
+      {showCard && (
+        <div className="w-full max-w-lg mb-8">
+          <InteractiveCard
+            activeField={activeField}
+            initialData={{
+              name: formData.cardName || formData.fullName || (formData.firstName ? `${formData.firstName} ${formData.lastName || ''}` : ''),
+              number: formData.cardNumber || formData.accountNumber || formData.ftBeneficiaryAccount,
+              expiry: formData.cardExpiry,
+              cvv: formData.cardCvv
+            }}
+            onSubmit={(data) => {
+              if (onUserSubmit) onUserSubmit(data);
+            }} />
+        </div>
+      )}
+
       <div className="clay-panel" style={{
         padding: "2.5rem",
         position: "relative", overflow: "hidden",

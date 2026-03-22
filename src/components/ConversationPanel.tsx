@@ -1,38 +1,36 @@
 import { useEffect, useRef } from "react";
+import ChatLoader from "./ChatLoader";
 
 interface Message { role: "user" | "ai"; text: string; }
 interface ConversationPanelProps { messages: Message[]; isVisible: boolean; status?: string; }
 
 const VISIBLE_COUNT = 5;
 
-const ConversationPanel = ({ messages, isVisible }: ConversationPanelProps) => {
+const ConversationPanel = ({ messages, isVisible, status }: ConversationPanelProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // ✅ FORCE TEST STATE
-  const status = "talking";
 
   useEffect(() => {
     const el = containerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, status]);
 
-  if (!isVisible || messages.length === 0) return null;
+  if (!isVisible || (messages.length === 0 && status !== "processing")) return null;
 
   const visible = messages.slice(-VISIBLE_COUNT);
 
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
-
-      {/* ✅ VERY IMPORTANT — ADD THIS BACK */}
-
       <div
         ref={containerRef}
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 10,
-          overflow: "hidden",
-          flex: 1
+          gap: 12,
+          overflowY: "auto",
+          overflowX: "hidden",
+          flex: 1,
+          padding: "10px 4px",
+          scrollbarWidth: "none"
         }}
       >
         {messages.length > VISIBLE_COUNT && (
@@ -44,7 +42,7 @@ const ConversationPanel = ({ messages, isVisible }: ConversationPanelProps) => {
             textAlign: "center",
             borderBottom: "1px solid rgba(79,110,247,0.12)",
             paddingBottom: 8,
-            marginBottom: 2,
+            marginBottom: 4,
             letterSpacing: "0.08em",
           }}>
             ↑ {messages.length - VISIBLE_COUNT} earlier message{messages.length - VISIBLE_COUNT > 1 ? "s" : ""}
@@ -102,6 +100,10 @@ const ConversationPanel = ({ messages, isVisible }: ConversationPanelProps) => {
             </p>
           </div>
         ))}
+        
+        {status === "processing" && (
+          <ChatLoader />
+        )}
       </div>
     </div>
   );

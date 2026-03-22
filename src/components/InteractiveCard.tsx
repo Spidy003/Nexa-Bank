@@ -21,11 +21,20 @@ const InteractiveCard: React.FC<InteractiveCardProps> = ({ onSubmit, initialData
   const [cvv, setCvv] = useState(initialData?.cvv || '');
   const [isFlipped, setIsFlipped] = useState(false);
 
+  // Sync state with props when initialData changes
+  React.useEffect(() => {
+    if (initialData?.name) setName(initialData.name);
+    if (initialData?.number) setNumber(initialData.number);
+    if (initialData?.expiry) setExpiry(initialData.expiry);
+    if (initialData?.cvv) setCvv(initialData.cvv);
+  }, [initialData]);
+
   // Auto-flip for CVV
   React.useEffect(() => {
-    if (activeField === 'cvv' || activeField === 'cardDetails') {
-       // if we are on cardDetails, we likely need both but let's see. 
-       // Often expiry is front, CVV is back.
+    if (activeField === 'cvv' || activeField === 'cardDetails' || activeField === 'cardCvv' || activeField === 'cardCvvField') {
+       setIsFlipped(true);
+    } else {
+       setIsFlipped(false);
     }
   }, [activeField]);
 
