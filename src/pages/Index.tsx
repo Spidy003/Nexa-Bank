@@ -10,7 +10,7 @@ import { processInput, type SessionData, type Intent, type DocumentStatus } from
 import { voiceService } from "@/lib/voiceService";
 import { Mic, MicOff, Shield, Zap, Sun, Moon, Keyboard } from "lucide-react";
 
-/* ── NexaBank logo SVG (inline) ─────────────────────────────────────── */
+/* ── LOC Bank logo SVG (inline) ─────────────────────────────────────── */
 const BrandLogo = () => (
   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 34, height: 34 }}>
     <rect x="1" y="1" width="38" height="38" rx="10" stroke="url(#gl)" strokeWidth="1.5" />
@@ -124,7 +124,7 @@ const Index = () => {
     if (status === "speaking") return;
     if (!started) {
       setStarted(true);
-      const welcome = "Welcome to NexaBank AI Assistant. You can choose to speak in English, Hindi, or Marathi. Additionally, if you'd like to change to dark or light mode, just ask. How can I assist you today?";
+      const welcome = "Welcome to LOC Bank AI Assistant. You can choose to speak in English, Hindi, or Marathi. Additionally, if you'd like to change to dark or light mode, just ask. How can I assist you today?";
       setTranscript(welcome);
       setConversationLog([{ role: "ai", text: welcome }]);
       await voiceService.speak(welcome);
@@ -166,7 +166,7 @@ const Index = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <BrandLogo />
           <div>
-            <div className="brand-name">NexaBank</div>
+            <div className="brand-name">LOC Bank</div>
             <div style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.58rem", letterSpacing: "0.18em", color: "var(--ink-soft)", marginTop: 1 }}>
               AI KIOSK · RBI COMPLIANT · AADHAAR eKYC
             </div>
@@ -265,7 +265,7 @@ const Index = () => {
               fontFamily: "var(--font-mono)", fontSize: "0.55rem",
               color: "var(--ink-soft)", fontWeight: 600, letterSpacing: "0.1em", opacity: 0.6,
             }}>
-              NEXABANK OS v4.2.1 · SESSION_LOG
+              LOC BANK OS v4.2.1 · SESSION_LOG
             </div>
           </div>
         )}
@@ -348,7 +348,7 @@ const Index = () => {
                   }}>
                     Welcome to{" "}
                     <span style={{ background: "linear-gradient(135deg,#00E5FF,#0284C7)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                      NexaBank
+                      LOC Bank
                     </span>
                   </h1>
                   <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem", color: "var(--ink)", letterSpacing: "0.08em", fontWeight: 600 }}>

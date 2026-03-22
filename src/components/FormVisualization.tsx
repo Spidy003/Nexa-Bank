@@ -221,11 +221,11 @@ const FormVisualization = ({
         />
         <div className="mt-8 clay-panel p-6 w-full text-center" style={{ borderTop: "3px solid #10B981" }}>
           <h3 className="text-xl font-bold text-green-400 mb-2">Account Created Successfully!</h3>
-          <p className="text-sm opacity-70 mb-4">Your NexaBank digital card is now active.</p>
+          <p className="text-sm opacity-70 mb-4">Your LOC Bank digital card is now active.</p>
           <div className="grid grid-cols-2 gap-4 text-left font-mono text-xs">
             <div className="opacity-50">ACCOUNT TYPE:</div><div>{formData.accountType || "SAVINGS"}</div>
             <div className="opacity-50">CUSTOMER ID:</div><div>CX-{Math.floor(Math.random() * 900000 + 100000)}</div>
-            <div className="opacity-50">IFSC CODE:</div><div>NXBK0001024</div>
+            <div className="opacity-50">IFSC CODE:</div><div>LOCB0001024</div>
           </div>
         </div>
       </div>
@@ -390,7 +390,7 @@ const FormVisualization = ({
           </div>
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1rem", color: "var(--ink)", letterSpacing: "0.01em" }}>{title}</div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--ink-soft)", marginTop: 2, letterSpacing: "0.1em" }}>NEXABANK_v1.0 · SECURE SESSION</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--ink-soft)", marginTop: 2, letterSpacing: "0.1em" }}>LOCBANK_v1.0 · SECURE SESSION</div>
           </div>
         </div>
 

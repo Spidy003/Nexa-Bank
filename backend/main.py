@@ -22,7 +22,7 @@ if not GEMINI_API_KEY:
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-app = FastAPI(title="Aura Banking Engine")
+app = FastAPI(title="LOC Banking Engine")
 
 app.add_middleware(
     CORSMiddleware,
@@ -94,7 +94,7 @@ def validate_email(t: str) -> Optional[str]:
     return e if re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", e) else None
 
 def gen_account() -> str:
-    return "AURA" + str(random.randint(100000000, 999999999))
+    return "LOC" + str(random.randint(100000000, 999999999))
 
 def gen_otp() -> str:
     return str(random.randint(1000, 9999))

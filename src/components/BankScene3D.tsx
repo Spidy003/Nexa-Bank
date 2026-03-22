@@ -110,7 +110,7 @@ const BankScene3D = () => {
             </svg>
           </div>
           <span id="brandName" className="font-display text-[18px] font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#00E5FF] to-[#0284C7]">
-            NexaBank
+            LOC Bank
           </span>
         </div>
 
@@ -125,7 +125,7 @@ const BankScene3D = () => {
           <div className="card-logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /><path d="M2 12h20" /></svg>
           </div>
-          <div className="card-brand">NexaBank</div>
+          <div className="card-brand">LOC Bank</div>
           <div className="card-number">•••• •••• •••• 4251</div>
           <div className="card-details">
             <span>09/28</span>
@@ -144,7 +144,7 @@ const BankScene3D = () => {
           <div className="card-logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
           </div>
-          <div className="card-brand">AURA PRIME</div>
+          <div className="card-brand">LOC PRIME</div>
           <div className="card-number">PLATINUM ELITE</div>
           <div className="card-details">
             <span>INFINITY EDITION</span>
@@ -154,7 +154,7 @@ const BankScene3D = () => {
 
         {/* Corner watermark */}
         <div id="cornerMark" className="absolute bottom-[28px] left-[36px] font-mono text-[9.5px] font-medium tracking-widest text-[#4B5563] opacity-60">
-          NEXABANK OS v4.2.1 &nbsp;|&nbsp; BUILD 20260319
+          LOC BANK OS v4.2.1 &nbsp;|&nbsp; BUILD 20260319
         </div>
 
       </div>
