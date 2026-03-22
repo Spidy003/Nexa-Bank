@@ -10,6 +10,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
