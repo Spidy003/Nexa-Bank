@@ -5,6 +5,8 @@ interface Assistant3DProps {
   status: "idle" | "listening" | "speaking" | "processing";
 }
 
+import { Canvas } from '@react-three/fiber';
+
 const Assistant3D = ({ status }: Assistant3DProps) => {
   // Map the application's AI status to the 3D model's specific animation stages
   const getAnimationState = (currentStatus: string) => {
@@ -34,7 +36,16 @@ const Assistant3D = ({ status }: Assistant3DProps) => {
         pointerEvents: "none"
       }}
     >
-      <AssistantExperience state={state} />
+      <Canvas
+        shadows
+        camera={{ position: [0, 0, 5], fov: 35 }}
+        gl={{ antialias: true, alpha: true }}
+      >
+        <ambientLight intensity={0.5} />
+        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+        <pointLight position={[-10, -10, -10]} />
+        <AssistantExperience state={state} />
+      </Canvas>
     </div>
   );
 };

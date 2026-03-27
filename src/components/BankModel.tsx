@@ -3,7 +3,11 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
-const BankModel = () => {
+interface BankModelProps {
+  stage?: 'home' | 'options';
+}
+
+const BankModel = ({ stage = 'home' }: BankModelProps) => {
   const bankGroupRef = useRef<THREE.Group>(null);
   const platformGroupRef = useRef<THREE.Group>(null);
   const rootRef = useRef<THREE.Group>(null);

@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAssistant } from "@/context/AssistantContext";
 import AuraOrb from "@/components/AuraOrb";
 import FormVisualization from "@/components/FormVisualization";
@@ -9,6 +10,7 @@ import BankScene3D from "@/components/BankScene3D";
 import { processInput, type SessionData, type Intent, type DocumentStatus } from "@/lib/apiClient";
 import { voiceService } from "@/lib/voiceService";
 import { Mic, MicOff, Shield, Zap, Sun, Moon, Keyboard } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 /* ── LOC Bank logo SVG (inline) ─────────────────────────────────────── */
 const BrandLogo = () => (
@@ -28,13 +30,15 @@ const BrandLogo = () => (
 );
 
 const Index = () => {
-  const { status, setStatus, setStage } = useAssistant();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { status, setStatus, showBalanceGraph, setShowBalanceGraph, setBalanceData } = useAssistant();
+  const [showForm, setShowForm] = useState(false);
   const [transcript, setTranscript] = useState("Tap the orb to start your banking session");
   const [interimText, setInterimText] = useState("");
   const [formData, setFormData] = useState<SessionData>({});
   const [activeField, setActiveField] = useState<string>();
   const [validationResult, setValidationResult] = useState<"valid" | "invalid">();
-  const [showForm, setShowForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [successAccount, setSuccessAccount] = useState<string>();
@@ -48,23 +52,13 @@ const Index = () => {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [cameraVoiceTrigger, setCameraVoiceTrigger] = useState(false);
   const [testInput, setTestInput] = useState("");
-  const [showTestInput, setShowTestInput] = useState(true);
+  const [showTestInput, setShowTestInput] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
   };
-
-  useEffect(() => {
-    voiceService.setCallbacks(
-      (text) => { setTranscript(text); setInterimText(""); handleUserInput(text); },
-      (text) => { setInterimText(text); },
-      setStatus,
-    );
-    // Update global stage for 3D background
-    setStage(showForm || (started && !showForm) ? "options" : "home");
-  }, [showForm, started, setStage]);
 
   const handleUserInput = useCallback(async (text: string) => {
     setStatus("processing");
@@ -75,7 +69,43 @@ const Index = () => {
     if (isPhotoField && (text.toLowerCase().includes("click") || text.toLowerCase().includes("snap") || text.toLowerCase().includes("capture"))) {
       setCameraVoiceTrigger(true);
       setTimeout(() => setCameraVoiceTrigger(false), 1000); // Reset for next attempt
+      setStatus("idle");
       return;
+    }
+    
+    // 🎙️ Advanced Voice Commands
+    const lowerInput = text.toLowerCase();
+    
+    if (lowerInput.includes("explain") && (lowerInput.includes("graph") || lowerInput.includes("chart") || lowerInput.includes("trend"))) {
+      const { balance, history } = useAssistant().balanceData;
+      const response = `Certainly! Your balance has seen a positive trend, starting at ₹${history[0].value.toLocaleString()} in ${history[0].month} and reaching ₹${balance.toLocaleString()} by ${history[4].month}. You are currently saving approximately ₹12,500 every month, which is excellent financial behavior.`;
+      setConversationLog(prev => [...prev, { role: "ai", text: response }]);
+      setStatus("speaking");
+      await voiceService.speak(response);
+      setStatus("idle");
+      return;
+    }
+
+    if (lowerInput.includes("show") && (lowerInput.includes("offer") || lowerInput.includes("suggestion"))) {
+      useAssistant().setTriggerOffer(true);
+      const response = "Certainly, I've brought up some personalized financial offers for you in the bottom right corner.";
+      setConversationLog(prev => [...prev, { role: "ai", text: response }]);
+      setStatus("speaking");
+      await voiceService.speak(response);
+      setStatus("idle");
+      return;
+    }
+
+    if (lowerInput.includes("hide") || lowerInput.includes("close") || lowerInput.includes("back") || lowerInput.includes("ok") || lowerInput.includes("thanks")) {
+      if (showBalanceGraph) {
+        setShowBalanceGraph(false);
+        const response = "Closing the balance visualization. How else can I help you?";
+        setConversationLog(prev => [...prev, { role: "ai", text: response }]);
+        setStatus("speaking");
+        await voiceService.speak(response);
+        setStatus("idle");
+        return;
+      }
     }
 
     await new Promise(r => setTimeout(r, 200));
@@ -103,21 +133,59 @@ const Index = () => {
     setConversationLog(prev => [...prev, { role: "ai", text: response.speak }]);
 
     if (response.final) {
+      if (response.intent === "BALANCE_CHECK") {
+        setShowBalanceGraph(true);
+        setShowForm(false);
+      }
       setSuccessMessage(response.speak);
       setSuccessAccount(response.value);
       if (response.field === "success") {
+        const isBalance = response.intent === "BALANCE_CHECK";
         setTimeout(() => setShowSuccess(true), 500);
+        
+        // Auto-hide success modal, but DON'T reset to menu if it's the balance graph
         setTimeout(() => {
-          setShowSuccess(false); setShowForm(false); setFormData({});
-          setActiveField(undefined); setCurrentIntent(undefined);
-          setCurrentSection(undefined); setCurrentProgress(undefined);
-          setCurrentDocuments(undefined);
-          setTranscript("How else can I help you?");
-        }, 8000);
+          setShowSuccess(false);
+          if (isBalance) {
+            if (response.metadata?.balance_data) {
+              setBalanceData(response.metadata.balance_data);
+            }
+            // Redirect to the new Showcase page for the "Insane" animation
+            navigate('/showcase');
+          } else {
+            setShowForm(false);
+            setFormData({});
+            setActiveField(undefined);
+            setCurrentIntent(undefined);
+            setCurrentSection(undefined);
+            setCurrentProgress(undefined);
+            setCurrentDocuments(undefined);
+            setTranscript("How else can I help you?");
+          }
+        }, isBalance ? 2000 : 8000);
       }
     }
     await voiceService.speak(response.speak);
-  }, []);
+  }, [status, activeField, showBalanceGraph, navigate, setShowBalanceGraph, setBalanceData, setStatus]);
+
+  // Listen for automated intents from Showcase Page
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const intent = params.get('intent');
+    if (intent === 'fixed_deposit' && started) {
+      handleUserInput("Fixed Deposit");
+      // Clean up URL so it doesn't re-trigger
+      window.history.replaceState({}, document.title, "/");
+    }
+  }, [started, handleUserInput]);
+
+  useEffect(() => {
+    voiceService.setCallbacks(
+      (text) => { setTranscript(text); setInterimText(""); handleUserInput(text); },
+      (text) => { setInterimText(text); },
+      setStatus,
+    );
+  }, [handleUserInput, setStatus]);
 
   const handleOrbClick = useCallback(async () => {
     if (status === "listening") { voiceService.stopListening(); return; }
@@ -125,7 +193,7 @@ const Index = () => {
     if (!started) {
       setStarted(true);
       const welcome = "Welcome to LOC Bank AI Assistant. You can choose to speak in English, Hindi, or Marathi. Additionally, if you'd like to change to dark or light mode, just ask. How can I assist you today?";
-      setTranscript(welcome);
+      setTranscript("READY");
       setConversationLog([{ role: "ai", text: welcome }]);
       await voiceService.speak(welcome);
       voiceService.startListening();
@@ -239,7 +307,7 @@ const Index = () => {
               <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
                 <button 
                   onClick={() => setShowTestInput(!showTestInput)}
-                  title={showTestInput ? "Hide Testing Input" : "Show Testing Input"}
+                  title={showTestInput ? "Hide Text Input" : "Show Text Input"}
                   style={{ 
                     background: "transparent", border: "none", cursor: "pointer", 
                     color: showTestInput ? "var(--accent)" : "var(--ink-muted)",
@@ -273,17 +341,18 @@ const Index = () => {
         {/* Right: Main content area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflow: "hidden" }}>
           
-          {/* Top-Pinned Testing Input - Always Visible */}
+          {/* Subtle Text Input - Hidden by default */}
           {started && showTestInput && (
             <div style={{ 
               width: "100%", 
-              padding: "12px 24px", 
+              padding: "10px 24px", 
               background: "rgba(10,15,28,0.4)", 
               borderBottom: "1px solid rgba(0,229,255,0.15)",
               backdropFilter: "blur(20px)",
               zIndex: 30,
               display: "flex",
-              justifyContent: "center"
+              justifyContent: "center",
+              animation: "fadeInDown 0.4s cubic-bezier(0.16,1,0.3,1) forwards"
             }}>
               <div style={{ width: "100%", maxWidth: 640, position: "relative" }}>
                 <input
@@ -292,33 +361,30 @@ const Index = () => {
                   onChange={(e) => setTestInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && testInput.trim()) {
-                      setTranscript(testInput);
                       handleUserInput(testInput);
                       setTestInput("");
                     }
                   }}
-                  placeholder="Enter command or reply here..."
+                  placeholder="Type a command..."
                   style={{
                     width: "100%",
                     background: "rgba(15,23,42,0.8)",
                     border: "1px solid rgba(0,229,255,0.4)",
-                    borderRadius: "12px",
-                    padding: "10px 16px",
+                    borderRadius: "10px",
+                    padding: "8px 16px",
                     paddingRight: "60px",
                     color: "white",
                     fontFamily: "var(--font-mono)",
-                    fontSize: "0.85rem",
+                    fontSize: "0.8rem",
                     outline: "none",
-                    boxShadow: "0 0 20px rgba(0,229,255,0.1)",
                   }}
                 />
-                <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent)", fontSize: "0.6rem", fontWeight: 800, opacity: 0.6 }}>
-                  CMD_ENTRY
+                <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent)", fontSize: "0.5rem", fontWeight: 800, opacity: 0.6 }}>
+                  CMD
                 </div>
               </div>
             </div>
           )}
-
           {/* Center content */}
           <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", width: "100%", overflow: "auto", padding: "1.5rem 2rem", paddingBottom: "1rem" }}>
             {showForm ? (
@@ -362,33 +428,6 @@ const Index = () => {
           {/* Bottom: Transcript + Orb */}
           <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%", maxWidth: 480, pointerEvents: 'auto' }}>
             
-            {/* Main Transcript Box */}
-            {!showForm && (
-              <div style={{
-                background: "rgba(15,23,42,0.4)",
-                backdropFilter: "blur(12px)",
-                padding: "1rem 1.8rem",
-                borderRadius: "20px",
-                border: "1px solid rgba(255,255,255,0.05)",
-                textAlign: "center",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-                width: "100%",
-                position: "relative"
-              }}>
-                <p style={{
-                  color: "var(--ink)",
-                  fontSize: "0.85rem",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  lineHeight: 1.5,
-                  margin: 0,
-                  opacity: status === "idle" ? 0.7 : 1,
-                  transition: "all 0.3s ease",
-                }}>
-                  {status === "listening" ? (interimText || transcript) : transcript}
-                </p>
-              </div>
-            )}
 
 
             <AuraOrb status={status} onClick={handleOrbClick} />

@@ -4,10 +4,11 @@ import { Environment, PerspectiveCamera, ContactShadows } from '@react-three/dre
 import * as THREE from 'three';
 import BankModel from './BankModel';
 import AssistantExperience from './assistant3d/AssistantExperience';
+import BalanceGraph3D from './BalanceGraph3D';
 import { useAssistant } from '@/context/AssistantContext';
 
 const SceneContent = ({ status, theme }: { status: string, theme: string }) => {
-  const { status: appStatus } = useAssistant();
+  const { status: appStatus, showBalanceGraph, balanceData } = useAssistant();
 
   // Helper to map app status to robot state
   const getRobotState = (s: string) => {
@@ -44,17 +45,24 @@ const SceneContent = ({ status, theme }: { status: string, theme: string }) => {
       <Environment preset="city" />
 
       <Suspense fallback={null}>
-        {/* 🏛️ Bank Model */}
-        <BankModel stage={appStatus === 'idle' ? 'home' : 'options'} />
+        {/* 🏛️ Hide Bank Model when Graph is showing for focus */}
+        {!showBalanceGraph && <BankModel stage={appStatus === 'idle' ? 'home' : 'options'} />}
 
         {/* 🤖 Robot Assistant exactly in bottom right corner */}
         <group
-          position={[3.6, 0.4, 7.5]}
+          position={showBalanceGraph ? [4.5, 0.4, 5.5] : [3.6, 0.4, 7.5]}
           rotation={[0, -0.4, 0]}
-          scale={0.5}
+          scale={showBalanceGraph ? 0.4 : 0.5}
         >
           <AssistantExperience state={getRobotState(appStatus)} />
         </group>
+
+        {/* 📉 3D Balance Graph - Centered and Visible */}
+        <BalanceGraph3D 
+          isVisible={showBalanceGraph} 
+          data={balanceData.history} 
+          totalBalance={balanceData.balance} 
+        />
       </Suspense>
 
       <ContactShadows

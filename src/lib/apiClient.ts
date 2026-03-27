@@ -51,6 +51,10 @@ export interface EngineResponse {
   section?: string;
   progress?: number;
   documents?: DocumentStatus[];
+  metadata?: {
+    show_balance_graph?: boolean;
+    balance_data?: any;
+  };
 }
 
 const API_BASE = "http://localhost:8000";
@@ -77,6 +81,7 @@ export async function processInput(sessionId: string, text: string): Promise<Eng
       section: data.section,
       progress: data.progress,
       documents: data.documents,
+      metadata: data.metadata,
     };
   } catch (err) {
     console.error("Backend unreachable:", err);

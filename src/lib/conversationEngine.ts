@@ -494,7 +494,7 @@ export function processInput(sessionId: string, text: string): EngineResponse {
     session.data.dob = text.trim();
     session.state = "ACC_GENDER";
     return {
-      speak: "Date of birth noted. What is your gender? Male, Female, or Third Gender?",
+      speak: "Date of birth noted. What is your gender? Male, Female, or Other?",
       field: "gender",
       value: session.data.dob,
       formData: session.data,
@@ -504,7 +504,7 @@ export function processInput(sessionId: string, text: string): EngineResponse {
   }
 
   if (session.state === "ACC_GENDER") {
-    session.data.gender = /female/i.test(t) ? "Female" : /third/i.test(t) ? "Third Gender" : "Male";
+    session.data.gender = /female/i.test(t) ? "Female" : /other/i.test(t) ? "Other" : "Male";
     session.state = "ACC_MARITAL_STATUS";
     return {
       speak: `${session.data.gender} noted. What is your marital status? Married, Unmarried, or Others?`,
